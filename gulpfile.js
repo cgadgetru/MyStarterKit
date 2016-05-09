@@ -5,10 +5,19 @@ var concat = require('gulp-concat');
 var imageMin = require('gulp-imagemin');
 var rename = require('gulp-rename');
 var sass = require('gulp-sass');
-var autoprefixer = require('gulp-autoprefixer');
+var autoprefixer = require('autoprefixer');
 var uglify = require('gulp-uglify');
-const babel = require('gulp-babel');
+var babel = require('gulp-babel');
+var postCss = require('gulp-postcss');
+var lost = require('lost');
 
+
+var processors = [
+    autoprefixer({
+        browsers: ["> 1%"]
+    }),
+    lost
+];
 
 var paths = {
     styles: 'app/styles/style.scss',
@@ -19,38 +28,41 @@ var paths = {
     fonts: ['app/fonts/*'],
     indexHtml: 'app/index.html',
     public:'public/',
+    html:'app/**.html',
     vendorsPaths:{
-        css:['bower_components/Slidebars/dist/slidebars.min.css'],
-        js:[
-            'bower_components/jquery/dist/jquery.min.js',
-            'bower_components/Slidebars/dist/slidebars.min.js'
-        ]
+        css:[],
+        js:['app/vendors/system-polyfills.js','app/vendors/system.js']
     }
 
 };
 
-gulp.task('rpl', function () {
-    gulp.src('app/index.html')
+gulp.task('html', function () {
+    gulp.src(paths.html)
         .pipe(gulp.dest(paths.public));
 });
 
 gulp.task('vendors-css', function () {
-    gulp.src(paths.vendorsPaths.css)
-        .pipe(concat('vendor.min.css'))
-        .pipe(gulp.dest(paths.public+'vendors'));
+    if (paths.vendorsPaths.css.length > 0 ){
+        gulp.src(paths.vendorsPaths.css)
+            .pipe(concat('vendor.min.css'))
+            .pipe(gulp.dest(paths.public+'vendors'));
+    }
+
 });
 
 gulp.task('vendors-js', function () {
-    gulp.src(paths.vendorsPaths.js)
-        .pipe(concat('vendor.min.js'))
-        .pipe(gulp.dest(paths.public+'vendors'));
+    if (paths.vendorsPaths.js.length > 0 ) {
+        gulp.src(paths.vendorsPaths.js)
+            .pipe(concat('vendors.min.js'))
+            .pipe(gulp.dest(paths.public + 'vendors'));
+    }
 });
 
-gulp.task('scripts', function () {
+/*gulp.task('scripts', function () {
     gulp.src(paths.scripts)
         .pipe(uglify())
         .pipe(gulp.dest(paths.public+'scripts'));
-});
+});*/
 
 gulp.task('sass', function () {
     gulp.src(paths.public+'/css/**.*', {read: false})
@@ -58,9 +70,7 @@ gulp.task('sass', function () {
     return gulp.src(paths.styles)
         .pipe(sass({outputStyle: 'compressed'}).on('error', sass.logError))
         .on('error', console.error)
-        .pipe(autoprefixer({
-            browsers: ["> 1%"]
-        }))
+        .pipe(postCss(processors))
         .pipe(rename('style.min.css'))
         .pipe(gulp.dest(paths.public+'/css/'));
 });
@@ -70,18 +80,17 @@ gulp.task('images', function () {
         .pipe(imageMin({optimizationLevel: 5}))
         .pipe(gulp.dest(paths.public+'/images/'))
 });
-
 gulp.task('fonts', function () {
     gulp.src(paths.fonts)
         .pipe(gulp.dest(paths.public+'/fonts/'))
 });
 
 gulp.task('watch', function () {
-    gulp.watch(paths.scripts, ['scripts', 'rpl']).on('change', browserSync.reload);
-    gulp.watch(paths.stylesWatch, ['sass', 'rpl']).on('change', browserSync.reload);
+    /*gulp.watch(paths.scripts, ['scripts', 'html']).on('change', browserSync.reload);*/
+    gulp.watch(paths.stylesWatch, ['sass', 'html']).on('change', browserSync.reload);
     gulp.watch(paths.images, ['images']);
     gulp.watch(paths.fonts, ['fonts']);
-    gulp.watch(paths.indexHtml, ['rpl']).on('change', browserSync.reload);
+    gulp.watch(paths.html, ['html']).on('change', browserSync.reload);
 });
 
 var browserSync = require('browser-sync').create();
@@ -96,14 +105,16 @@ gulp.task('browser-sync', function() {
 });
 
 gulp.task('babel', function() {
-    return gulp.src('app/scripts/**.babel.js')
+    return gulp.src('app/scripts/**.js' )
         .pipe(babel({
-            presets: ['es2015']
+            presets: ['es2015'],
+            plugins: ["transform-es2015-modules-systemjs"]
+
         }))
         .pipe(gulp.dest(paths.public+'scripts'));
 });
 
-gulp.task('build', ['vendors-css','vendors-js', 'scripts', 'sass', 'images', 'fonts', 'rpl']);
+gulp.task('build', ['vendors-css','vendors-js','babel', 'sass', 'images', 'fonts', 'html']);
 
 gulp.task('default', ['build', 'watch', 'browser-sync']);
 

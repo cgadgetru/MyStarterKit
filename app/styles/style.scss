@@ -1,3 +1,5 @@
+@import "../../bower_components/bourbon/app/assets/stylesheets/_bourbon.scss";
+
 @import "fonts";
 @import "variables";
 @import "mixins";
@@ -7,4 +9,9 @@
     background: #ccc;
     color: #000;
     padding: 0.2em 0;
+}
+
+.test{
+    display: flex;
+    lost-column: 1/3;
 }
